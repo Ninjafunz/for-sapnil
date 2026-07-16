@@ -406,7 +406,7 @@
       );
       if(res.ok){
         const data = await res.json();
-        if(data && typeof data.value === "number" && data.value > 1){
+        if(data && typeof data.value === "number" && data.value > 2){
           showLocked();
           return;
         }
