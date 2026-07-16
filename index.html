@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title> for sapnil </title>
+<title>For Sapnil</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -156,12 +156,38 @@
   @media (max-width:480px){
     #stage{ padding:70px 16px 50px 16px; }
   }
+
+  #locked{
+    display:none;
+    position:fixed; inset:0; z-index:50;
+    background:var(--navy-deep);
+    align-items:center; justify-content:center;
+    padding:30px;
+  }
+  #locked .box{ max-width:420px; text-align:center; }
+  #locked .glyph{ font-size:26px; color:var(--gold); margin-bottom:20px; }
+  #locked h2{
+    font-family:'Cormorant Garamond', serif; font-style:italic; font-weight:500;
+    font-size:26px; color:var(--cream); margin-bottom:16px; line-height:1.4;
+  }
+  #locked p{
+    font-family:'Jost', sans-serif; font-weight:300; font-size:14.5px; line-height:1.8;
+    color:var(--cream-dim);
+  }
 </style>
 </head>
 <body>
 
 <div id="stars"></div>
 <div id="progress"></div>
+
+<div id="locked">
+  <div class="box">
+    <div class="glyph">✦</div>
+    <h2>This was written for one person, and it's already been opened.</h2>
+    <p>If you're seeing this and you're not Sapnil — this page wasn't meant for you. Some things are only meant to be read once, by the person they were written for.</p>
+  </div>
+</div>
 
 <div id="stage">
 
@@ -288,41 +314,64 @@
       <p>Whatever you're feeling right now — take your time. When you're ready, just message me back here, in the same chat I sent you this.</p>
     </div>
     <p class="cosmos-note">whichever it is — you still know where to find me.</p>
+    <p class="cosmos-note" style="margin-top:6px; opacity:.35;">written only for Sapnil, and no one else.</p>
     <button class="replay" onclick="go(0)">✦ read it again</button>
   </section>
 
 </div>
 
 <script>
-  // starfield
-  const starsWrap = document.getElementById('stars');
-  const starCount = window.innerWidth < 600 ? 60 : 100;
-  for(let i=0;i<starCount;i++){
-    const s = document.createElement('div');
-    s.className='star';
-    const size = Math.random()*2 + 1;
-    s.style.width = size+'px';
-    s.style.height = size+'px';
-    s.style.left = Math.random()*100+'%';
-    s.style.top = Math.random()*100+'%';
-    s.style.animationDuration = (2 + Math.random()*4)+'s';
-    s.style.animationDelay = (Math.random()*4)+'s';
-    starsWrap.appendChild(s);
+  // ---- one-time-view access control ----
+  // Uses a free public counter (countapi.xyz) so the "already opened" check
+  // works across devices, not just in one browser. If that service is
+  // unreachable, falls back to a same-device check via localStorage so the
+  // page still degrades gracefully instead of ever locking someone out
+  // incorrectly.
+  const CONFESSION_NAMESPACE = "manjil-sapnil-confession-2026";
+  const CONFESSION_KEY = "opened";
+  const LOCAL_FLAG = "confession_manjil_sapnil_opened";
+
+  function showLocked(){
+    document.getElementById('stars').style.display = 'none';
+    document.getElementById('progress').style.display = 'none';
+    document.getElementById('stage').style.display = 'none';
+    const locked = document.getElementById('locked');
+    locked.style.display = 'flex';
   }
 
-  // scene order for progress bar
-  const order = [0,1,2,3,4,5,6,7,8,9,10];
-  const progressWrap = document.getElementById('progress');
-  order.forEach(()=>{
-    const seg = document.createElement('div');
-    seg.className='seg';
-    seg.innerHTML = '<i></i>';
-    progressWrap.appendChild(seg);
-  });
+  function initPage(){
+    // starfield
+    const starsWrap = document.getElementById('stars');
+    const starCount = window.innerWidth < 600 ? 60 : 100;
+    for(let i=0;i<starCount;i++){
+      const s = document.createElement('div');
+      s.className='star';
+      const size = Math.random()*2 + 1;
+      s.style.width = size+'px';
+      s.style.height = size+'px';
+      s.style.left = Math.random()*100+'%';
+      s.style.top = Math.random()*100+'%';
+      s.style.animationDuration = (2 + Math.random()*4)+'s';
+      s.style.animationDelay = (Math.random()*4)+'s';
+      starsWrap.appendChild(s);
+    }
+
+    // scene order for progress bar
+    window.__order = [0,1,2,3,4,5,6,7,8,9,10];
+    const progressWrap = document.getElementById('progress');
+    window.__order.forEach(()=>{
+      const seg = document.createElement('div');
+      seg.className='seg';
+      seg.innerHTML = '<i></i>';
+      progressWrap.appendChild(seg);
+    });
+
+    updateProgress(0);
+  }
 
   function updateProgress(sceneId){
-    const idx = order.indexOf(sceneId);
-    const segs = progressWrap.querySelectorAll('.seg i');
+    const idx = window.__order.indexOf(sceneId);
+    const segs = document.querySelectorAll('#progress .seg i');
     segs.forEach((el,i)=>{
       el.style.width = i <= idx ? '100%' : '0%';
     });
@@ -343,7 +392,43 @@
     }
   }
 
-  updateProgress(0);
+  async function checkAccessAndInit(){
+    // Same-device fallback flag
+    let localAlreadyOpened = false;
+    try{
+      localAlreadyOpened = localStorage.getItem(LOCAL_FLAG) === "true";
+    }catch(e){ /* localStorage unavailable, ignore */ }
+
+    try{
+      const res = await fetch(
+        "https://api.countapi.xyz/hit/" + CONFESSION_NAMESPACE + "/" + CONFESSION_KEY,
+        { cache: "no-store" }
+      );
+      if(res.ok){
+        const data = await res.json();
+        if(data && typeof data.value === "number" && data.value > 1){
+          showLocked();
+          return;
+        }
+        try{ localStorage.setItem(LOCAL_FLAG, "true"); }catch(e){}
+        initPage();
+        return;
+      }
+      throw new Error("bad response");
+    }catch(err){
+      // Cross-device counter unreachable — fall back to local-only guard
+      // so the page still works, and at least repeat opens on this same
+      // device/browser get caught.
+      if(localAlreadyOpened){
+        showLocked();
+        return;
+      }
+      try{ localStorage.setItem(LOCAL_FLAG, "true"); }catch(e){}
+      initPage();
+    }
+  }
+
+  checkAccessAndInit();
 </script>
 
 </body>
